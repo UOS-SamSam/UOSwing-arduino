@@ -18,8 +18,8 @@ const int ESP_RX = 3;
 #include <SoftwareSerial.h>
 SoftwareSerial wifiSerial(ESP_TX, ESP_RX);
 
-char ssid[] = "WIFI-SSID";
-char pass[] = "WIFI-PW";
+char ssid[] = "WIFI-SSID";  //SSID 입력
+char pass[] = "WIFI-PW";    //PW 입력
 int status = WL_IDLE_STATUS;
 
 const char SERVER[] = "api.wing-test.kro.kr";
