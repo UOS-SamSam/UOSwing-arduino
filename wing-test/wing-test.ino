@@ -172,7 +172,8 @@ void sendData(const char* server, const char* port) { // 온습도, 수량 데�
 void setup() {
   pinMode(ULTRA_TRIGGER_PIN, OUTPUT);
   pinMode(ULTRA_ECHO_PIN, INPUT);
-  pinMode(BUTTON_PIN, INPUT);
+  pinMode(DHT11_PIN, INPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
   
   Serial.begin(9600);
   wifiSerial.begin(9600);
@@ -198,8 +199,6 @@ void setup() {
 
 void wakeUp(){ // 버튼 interupt 시 trigger되는 함수 (딱히 하는 기능 없음)
   Serial.println("Button interrupt");
-  delay(1000);
-  apiRequest();
 }
 
 void apiRequest(){ // api 호출 관련 함수
@@ -217,11 +216,10 @@ void apiRequest(){ // api 호출 관련 함수
 }
 
 void loop() {
-//  attachInterrupt(0, wakeUp, FALLING); // Falling일 때 wakeUp이 trigger 됨 => 버튼이 눌리면 타이머 초기화
-  for (int i = 0; i < 1; i++) { // 1시간에 한 번 호출
-    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_ON); // 8초 * 450 = 3600초
+  apiRequest(); // api 요청 위치 바꾸면 에러 (왜인지는 모르겠음..)
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), wakeUp, FALLING); // Falling일 때 wakeUp이 trigger 됨 => 버튼이 눌리면 타이머 초기화
+  for (int i = 0; i < 5; i++) { // 1시간에 한 번 호출
+    LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_ON); // 8초 * 450 = 3600초
     // ADC_OFF, BOD_ON이어야 API 호출 성공함
   }
-  apiRequest();
-//  detachInterrupt(0);
 }
