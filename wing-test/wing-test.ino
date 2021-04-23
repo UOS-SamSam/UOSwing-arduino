@@ -28,7 +28,7 @@ const int ESP_RX = 3;
 SoftwareSerial wifiSerial(ESP_TX, ESP_RX);
 
 char ssid[] = "SSID";    // ssid 입력
-char pass[] = "PW"; // 비밀번호 입력
+char pass[] = "PASSWORD"; // 비밀번호 입력
 int status = WL_IDLE_STATUS;
 
 const char SERVER[] = "api.wing-test.kro.kr"; // 서버 도메인
@@ -37,7 +37,7 @@ WiFiEspClient client;
 
 String X_AUTH_TOKEN = ""; // 생리대함 인증 토큰
 int PADBOX_ID = 2; // 생리대함 id
-int PAD_WIDTH = 2.9; // 생리대 너비
+int PAD_WIDTH = 50; // 생리대 너비
 
 ht get_hum_and_temp() { // 온습도 체크
   DHT dht = DHT(DHT11_PIN, DHT11, 1);
@@ -59,7 +59,12 @@ long get_distance_mm() { //거리 체크
   
   long distance_mm;
   distance_mm = ((duration / PAD_WIDTH) / 2);
-  return distance_mm;
+
+  // 개수를 return 하도록 수정 (희은)
+  int num = (20 - distance_mm);
+  if(num < 0) num = 0;
+  if(num > 20) num = 20;
+  return num;
 }
 
 void tell_to_esp() {
@@ -213,7 +218,7 @@ void apiRequest(){ // api 호출 관련 함수
 
 void loop() {
 //  attachInterrupt(0, wakeUp, FALLING); // Falling일 때 wakeUp이 trigger 됨 => 버튼이 눌리면 타이머 초기화
-  for (int i = 0; i < 450; i++) { // 1시간에 한 번 호출
+  for (int i = 0; i < 1; i++) { // 1시간에 한 번 호출
     LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_ON); // 8초 * 450 = 3600초
     // ADC_OFF, BOD_ON이어야 API 호출 성공함
   }
