@@ -27,8 +27,8 @@ const int ESP_RX = 3;
 #include <SoftwareSerial.h>
 SoftwareSerial wifiSerial(ESP_TX, ESP_RX);
 
-char ssid[] = "U+NetF3E7";    // ssid 입력
-char pass[] = "0137000599"; // 비밀번호 입력
+char ssid[] = "SSID";    // ssid 입력
+char pass[] = "PASSWORD"; // 비밀번호 입력
 int status = WL_IDLE_STATUS;
 
 const char SERVER[] = "api.wing-test.kro.kr"; // 서버 도메인
