@@ -28,7 +28,7 @@ const int ESP_RX = 3;
 SoftwareSerial wifiSerial(ESP_TX, ESP_RX);
 
 char ssid[] = "SSID";    // ssid 입력
-char pass[] = "PASSWORD"; // 비밀번호 입력
+char pass[] = "PW"; // 비밀번호 입력
 int status = WL_IDLE_STATUS;
 
 const char SERVER[] = "api.wing-test.kro.kr"; // 서버 도메인
@@ -36,7 +36,7 @@ const int PORT = 8080; // 서버 접속 포트
 WiFiEspClient client;
 
 String X_AUTH_TOKEN = ""; // 생리대함 인증 토큰
-int PADBOX_ID = 10; // 생리대함 id
+int PADBOX_ID = 2; // 생리대함 id
 int PAD_WIDTH = 2.9; // 생리대 너비
 
 ht get_hum_and_temp() { // 온습도 체크
@@ -122,6 +122,7 @@ void login(const char* server, const char* port) { // login 후 토큰 저장
   char endOfHeaders[] = "\r\n\r\n";
   if (!client.find(endOfHeaders)) {
     Serial.println(F("Invalid response"));
+    client.flush();
     client.stop();
     return;
   }
@@ -139,12 +140,12 @@ void sendData(const char* server, const char* port) { // 온습도, 수량 데�
   ht htData = get_hum_and_temp();
   long padData = get_distance_mm();
   
-  String requestData = "{\"humidity\":"+String(htData.hum)+",\"padAmount\":"+String(htData.temp)+",\"temperature\":"+String(padData)+"}";
+  String requestData = "{\"humidity\":"+String(htData.hum)+",\"temperature\":"+String(htData.temp)+",\"padAmount\":"+String(padData)+"}";
   Serial.println(requestData);
   
   if(client.connect(server, port)){
     Serial.println("Connected to server");
-    client.print("PATCH /api/v1/padbox/updateState/2");
+    client.print("PATCH /api/v1/padbox/updateState/"+String(PADBOX_ID));
     client.println(" HTTP/1.1");
     
     client.print("Host: ");
@@ -192,6 +193,8 @@ void setup() {
 
 void wakeUp(){ // 버튼 interupt 시 trigger되는 함수 (딱히 하는 기능 없음)
   Serial.println("Button interrupt");
+  delay(1000);
+  apiRequest();
 }
 
 void apiRequest(){ // api 호출 관련 함수
@@ -204,21 +207,16 @@ void apiRequest(){ // api 호출 관련 함수
     Serial.write(c);
   }
   
-  // 서버와 연결이 끊긴 경우
-  if (!client.connected()) {
-    Serial.println();
-    Serial.println("Disconnecting from server...");
-    
-    client.stop();
-  }
+  client.flush(); // flush 해주어야 소켓 리소스가 반환됨
+  client.stop();
 }
 
 void loop() {
-  attachInterrupt(0, wakeUp, FALLING); // Low일 때 wakeUp이 trigger 됨 => 버튼이 눌리면 타이머 초기화
+//  attachInterrupt(0, wakeUp, FALLING); // Falling일 때 wakeUp이 trigger 됨 => 버튼이 눌리면 타이머 초기화
   for (int i = 0; i < 450; i++) { // 1시간에 한 번 호출
     LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_ON); // 8초 * 450 = 3600초
     // ADC_OFF, BOD_ON이어야 API 호출 성공함
   }
   apiRequest();
-  delay(500);
+//  detachInterrupt(0);
 }

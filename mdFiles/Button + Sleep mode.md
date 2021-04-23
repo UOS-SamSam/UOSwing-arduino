@@ -32,7 +32,7 @@ void loop() {
 
 ```c
 attachInterrupt(0, wakeUp, ROW);
-=> attachInterrupt(0, wakeUp, RISING);
+=> attachInterrupt(0, wakeUp, FALLING);
 ```
 
 attachInterrupt(인터럽트번호, 핸들러, 모드)
@@ -67,8 +67,8 @@ void setup() {
 }
 
 void loop() {
-  attachInterrupt(0, wakeUp, LOW);  // LOW, HIGH, RISING, FALLING, CHANGE
-  // Low일 때 wakeUp이 trigger됨
+  attachInterrupt(0, wakeUp, FALLING);  // LOW, HIGH, RISING, FALLING, CHANGE
+  // FALLING일 때 wakeUp이 trigger됨
   
   Serial.println("Sleep Start");
   for (int i = 0; i < 450; i++) { // 1시간에 한 번 호출
@@ -97,3 +97,4 @@ https://twinw.tistory.com/124
 
 
 최종 코드는 wing-test.ino 파일에 반영되어있다.
+
