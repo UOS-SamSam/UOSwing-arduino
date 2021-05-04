@@ -1,40 +1,45 @@
 #include <stdio.h>
 #include <DHT.h>
 #include <WiFiEsp.h>
-
-const int DHT11_PIN = 2; // 온습도계 꽂은 pin으로 바꿀 것
+#include <LowPower.h>
 
 typedef struct {
   float hum;
   float temp;
 } ht;
 
-const int ULTRA_TRIGGER_PIN = 8;
-const int ULTRA_ECHO_PIN = 9;
+// 온습도 센서 pin
+const int DHT11_PIN = A1;
 
+// 적외선 센서 pin
+const int ULTRA_TRIGGER_PIN = 13;
+const int ULTRA_ECHO_PIN = 12;
+
+// 버튼 pin
+const int BUTTON_PIN = 2;
+
+// wifi 모듈 pin
 const int ESP_TX = 4;
 const int ESP_RX = 3;
+
 #ifndef HAVE_HWSERIAL 1
 #endif
 #include <SoftwareSerial.h>
 SoftwareSerial wifiSerial(ESP_TX, ESP_RX);
 
-char ssid[] = "SSID";    //ssid 입력
-char pass[] = "PASSWORD"; //비밀번호 입력
+char ssid[] = "SSID";    // ssid 입력
+char pass[] = "PASSWORD"; // 비밀번호 입력
 int status = WL_IDLE_STATUS;
 
-const char SERVER[] = "api.wing-test.kro.kr";
-const int PORT = 8080;
-const char SERVER_TEST[] = "arduino.cc";
-const int PORT_TEST = 80;
+const char SERVER[] = "api.wing-test.kro.kr"; // 서버 도메인
+const int PORT = 8080; // 서버 접속 포트
 WiFiEspClient client;
 
-String X_AUTH_TOKEN = "";
+String X_AUTH_TOKEN = ""; // 생리대함 인증 토큰
 int PADBOX_ID = 2; // 생리대함 id
-int PAD_WIDTH = 2.9; // 생리대 너비
+int PAD_WIDTH = 50; // 생리대 너비
 
-//온습도 체크
-ht get_hum_and_temp() {
+ht get_hum_and_temp() { // 온습도 체크
   DHT dht = DHT(DHT11_PIN, DHT11, 1);
   ht rtn;
   rtn.hum = dht.readHumidity(false);            //(force mode)
@@ -42,8 +47,7 @@ ht get_hum_and_temp() {
   return rtn;
 }
 
-//거리 체크
-long get_distance_mm() {
+long get_distance_mm() { //거리 체크
   long duration = 0;
   digitalWrite(ULTRA_TRIGGER_PIN, LOW);
   delayMicroseconds(2);
@@ -55,7 +59,12 @@ long get_distance_mm() {
   
   long distance_mm;
   distance_mm = ((duration / PAD_WIDTH) / 2);
-  return distance_mm;
+
+  // 개수를 return 하도록 수정 (희은)
+  int num = (20 - distance_mm);
+  if(num < 0) num = 0;
+  if(num > 20) num = 20;
+  return num;
 }
 
 void tell_to_esp() {
@@ -82,11 +91,9 @@ void printWifiStatus(){
   Serial.print("Signal strength (RSSI):");
   Serial.print(rssi);
   Serial.println(" dBm");
-
 }
 
-void connect_wifi() {
-    //WiFi network 연결
+void connect_wifi() { // WiFi network 연결
   while(status != WL_CONNECTED) {
     Serial.print("Attempting to connect to WPA SSID: ");
     Serial.println(ssid);
@@ -95,7 +102,7 @@ void connect_wifi() {
   }
 }
 
-void login(const char* server, const char* port) {
+void login(const char* server, const char* port) { // login 후 토큰 저장
   Serial.println("Starting login...");
   String loginData="{\"email\":\"samsam-uos@gmail.com\",\"password\":\"33wing\"}";
  
@@ -107,12 +114,12 @@ void login(const char* server, const char* port) {
     client.print("Host: ");
     client.println(server);
     client.println("Accept: */*");
-    client.println("Connection: close");
+    client.println("Connection: close"); // 반드시 이곳에 위치
     client.println("Content-Type: application/json");
 
     client.print("Content-Length: ");
     client.println(loginData.length());
-    client.println();
+    client.println(); // 반드시 헤더와 바디 분리
     client.println(loginData);
   }
 
@@ -120,6 +127,7 @@ void login(const char* server, const char* port) {
   char endOfHeaders[] = "\r\n\r\n";
   if (!client.find(endOfHeaders)) {
     Serial.println(F("Invalid response"));
+    client.flush();
     client.stop();
     return;
   }
@@ -131,13 +139,13 @@ void login(const char* server, const char* port) {
   X_AUTH_TOKEN = token;
 }
 
-void sendData(const char* server, const char* port) {
+void sendData(const char* server, const char* port) { // 온습도, 수량 데이터 서버로 전송
   // HTTP patch request
   Serial.println("Starting Sending data to server...");
   ht htData = get_hum_and_temp();
   long padData = get_distance_mm();
   
-  String requestData = "{\"humidity\":"+String(htData.hum)+",\"padAmount\":"+String(htData.temp)+",\"temperature\":"+String(padData)+"}";
+  String requestData = "{\"humidity\":"+String(htData.hum)+",\"temperature\":"+String(htData.temp)+",\"padAmount\":"+String(padData)+"}";
   Serial.println(requestData);
   
   if(client.connect(server, port)){
@@ -148,7 +156,7 @@ void sendData(const char* server, const char* port) {
     client.print("Host: ");
     client.println(server);
     client.println("Accept: */*");
-    client.println("Connection: keep-alive");
+    client.println("Connection: keep-alive"); // 반드시 keep-alive
     client.print("X-AUTH-TOKEN: ");
     client.println(X_AUTH_TOKEN);
     client.println("Content-Type: application/json");
@@ -161,25 +169,12 @@ void sendData(const char* server, const char* port) {
   
 }
 
-void http_request(const char* server, const char* port, const char* method) {
-  // HTTP request
-  Serial.println("Starting connection to server...");
-  if (client.connect(server, port)) {
-    Serial.println("Connected to server");
-    // HTTP request
-    client.print(method);
-    client.println(" HTTP/1.1");  // method 서술
-    
-    client.print("Host: ");
-    client.println(server);       // http request 요구사항 (없으면 Bad Request)
-    client.println("Connection: close");
-    client.println();             // request 마무리
-  }
-}
-
 void setup() {
   pinMode(ULTRA_TRIGGER_PIN, OUTPUT);
   pinMode(ULTRA_ECHO_PIN, INPUT);
+  pinMode(DHT11_PIN, INPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  
   Serial.begin(9600);
   wifiSerial.begin(9600);
   WiFi.init(&wifiSerial);
@@ -199,27 +194,32 @@ void setup() {
   
   // login
   login(SERVER, PORT);
-  Serial.println(X_AUTH_TOKEN);
+  Serial.println(X_AUTH_TOKEN); // 토큰 출력
 }
 
-void loop() {
-  //HTTP Request
+void wakeUp(){ // 버튼 interupt 시 trigger되는 함수 (딱히 하는 기능 없음)
+  Serial.println("Button interrupt");
+}
+
+void apiRequest(){ // api 호출 관련 함수
+  // HTTP Request
   sendData(SERVER, PORT);
   
-  //Response 출력
+  // Response 출력
   while (client.available()) {
     char c = client.read();
     Serial.write(c);
   }
   
-  // 서버와 연결이 끊긴 경우
-  if (!client.connected()) {
-    Serial.println();
-    Serial.println("Disconnecting from server...");
-    
-    client.stop();
-  }
+  client.flush(); // flush 해주어야 소켓 리소스가 반환됨
+  client.stop();
+}
 
-  Serial.println("end of loop");
-  delay(10000);
+void loop() {
+  apiRequest(); // api 요청 위치 바꾸면 에러 (왜인지는 모르겠음..)
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), wakeUp, FALLING); // Falling일 때 wakeUp이 trigger 됨 => 버튼이 눌리면 타이머 초기화
+  for (int i = 0; i < 5; i++) { // 1시간에 한 번 호출
+    LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_ON); // 8초 * 450 = 3600초
+    // ADC_OFF, BOD_ON이어야 API 호출 성공함
+  }
 }
