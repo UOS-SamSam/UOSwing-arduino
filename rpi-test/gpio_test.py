@@ -4,6 +4,7 @@ import time
 class Sensor:
     def __init__(self):
         gpio.setmode(gpio.BCM)
+        gpio.setwarnings(False)
         self.trig = 24
         self.echo = 23
         print("start ultrasonic sensor")
@@ -31,5 +32,7 @@ class Sensor:
             return -1
 
 if __name__ == '__main__':
-    sensor = Sensor()
-    print("dist:", sensor.get_dist(), "cm")
+	sensor = Sensor()
+	while True:
+		print("dist:", sensor.get_dist(), "cm")
+		time.sleep(3)
