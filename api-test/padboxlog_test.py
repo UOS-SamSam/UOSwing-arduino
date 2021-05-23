@@ -1,4 +1,4 @@
-from api import Samsam_api
+from samsam_api import Samsam_api
 
 def main():
     email = "samsam-uos@gmail.com"
